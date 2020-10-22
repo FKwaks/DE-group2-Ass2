@@ -30,6 +30,9 @@ from apache_beam.options.pipeline_options import SetupOptions
 from google.cloud import storage
 from keras.models import load_model
 
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+
 
 def get_csv_reader(readable_file):
     # Open a channel to read the file from GCS
