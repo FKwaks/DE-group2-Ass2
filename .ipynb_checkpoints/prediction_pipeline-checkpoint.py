@@ -17,7 +17,7 @@ from keras.models import Sequential
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
 
 
-def train_save_model(readable_file, project_id, bucket_name):
+def train_save_model(readable_file):
     # Open a channel to read the file from GCS
     gcs_file = beam.io.filesystems.FileSystems.open(readable_file)
 
@@ -34,7 +34,7 @@ def train_save_model(readable_file, project_id, bucket_name):
     
     
     text_out = {
-        "Sentimental Compound value:": sentiment_dict['compound'],
+        "Sentimental Compound value:": sentiment_dict['compound']
     }
 
     return json.dumps(str(text_out), sort_keys=False, indent=4)
