@@ -14,11 +14,13 @@ from keras.models import load_model
 
 
 def get_csv_reader(readable_file):
+    field_list = ['listing_id','id','date','reviewer_id','reviewer_name','comments']
+
     # Open a channel to read the file from GCS
     gcs_file = beam.io.filesystems.FileSystems.open(readable_file)
-
+    
     # Return the csv reader
-    return csv.DictReader(io.TextIOWrapper(gcs_file))
+    return csv.DictReader(io.TextIOWrapper(gcs_file), field_list)
 
 class MyPredictDoFn(beam.DoFn):
 
@@ -36,7 +38,7 @@ class MyPredictDoFn(beam.DoFn):
     def process(self, elements, **kwargs):
 
         df = pd.DataFrame(elements)
-
+        print(df)
         df['comments'] = df['comments'].apply(calculate_sentiment)
         df = df[df['comments'] != -55]
         df = df.groupby('date')['comments'].mean()
@@ -57,9 +59,10 @@ def run(argv=None, save_main_session=True):
 
     # The pipeline will be run on exiting the with block.
     with beam.Pipeline(options=pipeline_options) as p:
+        
         # Read the text file[pattern] into a PCollection.
-        prediction_data = (p | 'CreatePCollection' >> beam.Create(['results/test-00000-of-00001.csv'])
-                           | 'ReadCSVFle' >> beam.FlatMap(get_csv_reader))
+        prediction_data = (p | 'CreatePCollection' >> beam.Create(['Data/reviews-kopie.csv'])
+                           | 'ReadCSVFile' >> beam.FlatMap(get_csv_reader))
 
         # https://beam.apache.org/releases/pydoc/2.25.0/apache_beam.transforms.util.html#apache_beam.transforms.util.BatchElements
         # https://beam.apache.org/documentation/transforms/python/aggregation/groupintobatches/
