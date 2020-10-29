@@ -4,13 +4,13 @@ import argparse
 import csv
 import io
 import logging
+import math
 
 import apache_beam as beam
 import pandas as pd
 from apache_beam.io import WriteToText
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
-from keras.models import load_model
 
 
 def get_csv_reader(readable_file):
@@ -30,19 +30,19 @@ class MyPredictDoFn(beam.DoFn):
         
     def calculate_sentiment(self, entry):
         sid_obj = SentimentIntensityAnalyzer() 
-        if (type(self.entry) != str and math.isnan(self.entry)):
+        if type(self.entry) != str:
             return -55
-            opinion = sid_obj.polarity_scores(self.entry)
+        opinion = sid_obj.polarity_scores(self.entry)
         return opinion['compound']
 
     def process(self, elements, **kwargs):
 
         df = pd.DataFrame(elements)
-        print(df)
-        df['comments'] = df['comments'].apply(calculate_sentiment)
+        df = df.iloc[1:]
+        df['comments'] = df['comments'].apply(self.calculate_sentiment)
         df = df[df['comments'] != -55]
         df = df.groupby('date')['comments'].mean()
-        
+        print(df)
         return df
 
 
@@ -61,7 +61,7 @@ def run(argv=None, save_main_session=True):
     with beam.Pipeline(options=pipeline_options) as p:
         
         # Read the text file[pattern] into a PCollection.
-        prediction_data = (p | 'CreatePCollection' >> beam.Create(['Data/reviews-kopie.csv'])
+        prediction_data = (p | 'CreatePCollection' >> beam.Create(['Data/reviews-kopie-2.csv'])
                            | 'ReadCSVFile' >> beam.FlatMap(get_csv_reader))
 
         # https://beam.apache.org/releases/pydoc/2.25.0/apache_beam.transforms.util.html#apache_beam.transforms.util.BatchElements
