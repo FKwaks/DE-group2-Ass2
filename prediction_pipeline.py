@@ -55,14 +55,10 @@ class MyPredictDoFn(beam.DoFn):
         df['comments_'] = new_list
         df = df[df['comments_'] != -55]
         df = df.groupby('date')['comments_'].mean()
-        print(df)
         df = pd.DataFrame({'date': df.index, 'value': df.values})
-        print('Dit zijn de kolommen in het dataframe {}'.format(df.columns))
-        print(df)
 
         result = df.to_json(orient="records")
-        parsed = json.loads(result)
-        return parsed
+        return result
 
 
 def run(argv=None, save_main_session=True):
@@ -92,8 +88,8 @@ def run(argv=None, save_main_session=True):
         '--mbucket',
         dest='mbucket',
         help='model bucket name')
+
     known_args, pipeline_args = parser.parse_known_args(argv)
-    print(known_args)
 
     # We use the save_main_session option because one or more DoFn's in this
     # workflow rely on global context (e.g., a module imported at module level).
