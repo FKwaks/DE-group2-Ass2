@@ -5,6 +5,7 @@ import csv
 import io
 import logging
 import math
+import json
 
 import apache_beam as beam
 import pandas as pd
@@ -20,7 +21,7 @@ def get_csv_reader(readable_file):
     gcs_file = beam.io.filesystems.FileSystems.open(readable_file)
     
     # Return the csv reader
-    return csv.DictReader(io.TextIOWrapper(gcs_file), field_list)
+    return csv.DictReader(io.TextIOWrapper(gcs_file, encoding = 'utf-8'), field_list)
 
 class MyPredictDoFn(beam.DoFn):
 
@@ -30,7 +31,7 @@ class MyPredictDoFn(beam.DoFn):
         
     def calculate_sentiment(self, entry):
         sid_obj = SentimentIntensityAnalyzer() 
-        if type(self.entry) != str:
+        if (type(self.entry) != str and math.isnan(entry)):
             return -55
         opinion = sid_obj.polarity_scores(self.entry)
         return opinion['compound']
@@ -39,11 +40,27 @@ class MyPredictDoFn(beam.DoFn):
 
         df = pd.DataFrame(elements)
         df = df.iloc[1:]
-        df['comments'] = df['comments'].apply(self.calculate_sentiment)
-        df = df[df['comments'] != -55]
-        df = df.groupby('date')['comments'].mean()
         print(df)
-        return df
+        new_list = []
+        sid_obj = SentimentIntensityAnalyzer()
+        
+        for i in list(df.comments):
+            if (type(i) != str and math.isnan(i)):
+                i = int(-55)    
+            opinion = sid_obj.polarity_scores(i)
+            new_list.append(opinion['compound'])
+
+        df['comments_'] = new_list
+        df = df[df['comments_'] != -55]
+        df = df.groupby('date')['comments_'].mean()
+        print(df)
+        df = pd.DataFrame({'date':df.index, 'value':df.values})
+        print('Dit zijn de kolommen in het dataframe {}'.format(df.columns))
+        print(df)
+
+        result = df.to_json(orient="records")
+        parsed = json.loads(result)
+        return json.dumps(parsed, indent=4)
 
 
 def run(argv=None, save_main_session=True):
@@ -67,7 +84,7 @@ def run(argv=None, save_main_session=True):
         # https://beam.apache.org/releases/pydoc/2.25.0/apache_beam.transforms.util.html#apache_beam.transforms.util.BatchElements
         # https://beam.apache.org/documentation/transforms/python/aggregation/groupintobatches/
         output = (prediction_data
-                  | 'batch into n batches' >> beam.BatchElements(min_batch_size=50, max_batch_size=75)
+                  | 'batch into n batches' >> beam.BatchElements(min_batch_size=1000, max_batch_size=1001)
                   | 'Predict' >> beam.ParDo(MyPredictDoFn()))
 
         output | 'WritePredictionResults' >> WriteToText(file_path_prefix="results/predictions",
