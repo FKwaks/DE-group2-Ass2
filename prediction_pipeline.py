@@ -62,7 +62,7 @@ class MyPredictDoFn(beam.DoFn):
 
         result = df.to_json(orient="records")
         parsed = json.loads(result)
-        return json.dumps(parsed, indent=4)
+        return parsed
 
 
 def run(argv=None, save_main_session=True):
@@ -111,7 +111,7 @@ def run(argv=None, save_main_session=True):
         # https://beam.apache.org/releases/pydoc/2.25.0/apache_beam.transforms.util.html#apache_beam.transforms.util.BatchElements
         # https://beam.apache.org/documentation/transforms/python/aggregation/groupintobatches/
         output = (prediction_data
-                  | 'batch into n batches' >> beam.BatchElements(min_batch_size=1000, max_batch_size=1001)
+                  | 'batch into n batches' >> beam.BatchElements(min_batch_size=1000000, max_batch_size=100000001)
                   | 'Predict' >> beam.ParDo(MyPredictDoFn()))
 
         output | 'WritePredictionResults' >> WriteToText(
