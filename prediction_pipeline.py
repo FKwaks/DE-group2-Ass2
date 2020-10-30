@@ -55,9 +55,8 @@ class MyPredictDoFn(beam.DoFn):
         df = df[df["comments_"] != -55]
         df = df.groupby("date")['comments_'].mean()
         df = pd.DataFrame({"date": df.index, "value": df.values})
-        df.replace({'\'': '"'}, regex=True)
-        result = df.to_json(orient="records")
-        return result
+        result = df.to_json(orient="values")
+        return json.loads(result)
 
 
 def run(argv=None, save_main_session=True):
@@ -110,7 +109,7 @@ def run(argv=None, save_main_session=True):
                   | 'Predict' >> beam.ParDo(MyPredictDoFn()))
 
         output | 'WritePredictionResults' >> WriteToText(
-            known_args.output, file_name_suffix=".json")
+            known_args.output, file_name_suffix=".txt")
 
 
 if __name__ == '__main__':
