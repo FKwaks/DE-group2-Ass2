@@ -78,7 +78,7 @@ def run(argv=None, save_main_session=True):
     with beam.Pipeline(options=pipeline_options) as p:
         
         # Read the text file[pattern] into a PCollection.
-        prediction_data = (p | 'CreatePCollection' >> beam.Create(['Data/reviews-kopie-2.csv'])
+        prediction_data = (p | 'CreatePCollection' >> beam.Create([known_args.input])
                            | 'ReadCSVFile' >> beam.FlatMap(get_csv_reader))
 
         # https://beam.apache.org/releases/pydoc/2.25.0/apache_beam.transforms.util.html#apache_beam.transforms.util.BatchElements
@@ -87,8 +87,7 @@ def run(argv=None, save_main_session=True):
                   | 'batch into n batches' >> beam.BatchElements(min_batch_size=1000, max_batch_size=1001)
                   | 'Predict' >> beam.ParDo(MyPredictDoFn()))
 
-        output | 'WritePredictionResults' >> WriteToText(file_path_prefix="results/predictions",
-                                                         file_name_suffix=".json")
+        output | 'WritePredictionResults' >> WriteToText(known_args.output, file_name_suffix=".json")
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
