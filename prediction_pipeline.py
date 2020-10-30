@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import argparse
 import csv
 import io
@@ -15,22 +15,24 @@ from apache_beam.options.pipeline_options import SetupOptions
 
 
 def get_csv_reader(readable_file):
-    field_list = ['listing_id','id','date','reviewer_id','reviewer_name','comments']
+    field_list = ['listing_id', 'id', 'date',
+                  'reviewer_id', 'reviewer_name', 'comments']
 
     # Open a channel to read the file from GCS
     gcs_file = beam.io.filesystems.FileSystems.open(readable_file)
-    
+
     # Return the csv reader
-    return csv.DictReader(io.TextIOWrapper(gcs_file, encoding = 'utf-8'), field_list)
+    return csv.DictReader(io.TextIOWrapper(gcs_file, encoding='utf-8'), field_list)
+
 
 class MyPredictDoFn(beam.DoFn):
 
     def __init__(self):
         self._model = SentimentIntensityAnalyzer()
         self.entry = None
-        
+
     def calculate_sentiment(self, entry):
-        sid_obj = SentimentIntensityAnalyzer() 
+        sid_obj = SentimentIntensityAnalyzer()
         if (type(self.entry) != str and math.isnan(entry)):
             return -55
         opinion = sid_obj.polarity_scores(self.entry)
@@ -43,10 +45,10 @@ class MyPredictDoFn(beam.DoFn):
         print(df)
         new_list = []
         sid_obj = SentimentIntensityAnalyzer()
-        
+
         for i in list(df.comments):
             if (type(i) != str and math.isnan(i)):
-                i = int(-55)    
+                i = int(-55)
             opinion = sid_obj.polarity_scores(i)
             new_list.append(opinion['compound'])
 
@@ -54,7 +56,7 @@ class MyPredictDoFn(beam.DoFn):
         df = df[df['comments_'] != -55]
         df = df.groupby('date')['comments_'].mean()
         print(df)
-        df = pd.DataFrame({'date':df.index, 'value':df.values})
+        df = pd.DataFrame({'date': df.index, 'value': df.values})
         print('Dit zijn de kolommen in het dataframe {}'.format(df.columns))
         print(df)
 
@@ -67,16 +69,41 @@ def run(argv=None, save_main_session=True):
     """Main entry point; defines and runs the wordcount pipeline."""
     parser = argparse.ArgumentParser()
 
+    parser.add_argument(
+        '--input',
+        dest='input',
+        default='gs://DE-group2-Ass2/Data/reviews-kopie-2.csv',
+        help='Input file to process.')
+
+    parser.add_argument(
+        '--output',
+        dest='output',
+        # CHANGE 1/6: The Google Cloud Storage path is required
+        # for outputting the results.
+        default='gs://de2020ass2grp2/sentiment.json',
+        help='Output file to write results to.')
+
+    parser.add_argument(
+        '--pid',
+        dest='pid',
+        help='project id')
+
+    parser.add_argument(
+        '--mbucket',
+        dest='mbucket',
+        help='model bucket name')
     known_args, pipeline_args = parser.parse_known_args(argv)
+    print(known_args)
 
     # We use the save_main_session option because one or more DoFn's in this
     # workflow rely on global context (e.g., a module imported at module level).
     pipeline_options = PipelineOptions(pipeline_args)
-    pipeline_options.view_as(SetupOptions).save_main_session = save_main_session
+    pipeline_options.view_as(
+        SetupOptions).save_main_session = save_main_session
 
     # The pipeline will be run on exiting the with block.
     with beam.Pipeline(options=pipeline_options) as p:
-        
+
         # Read the text file[pattern] into a PCollection.
         prediction_data = (p | 'CreatePCollection' >> beam.Create([known_args.input])
                            | 'ReadCSVFile' >> beam.FlatMap(get_csv_reader))
@@ -87,7 +114,9 @@ def run(argv=None, save_main_session=True):
                   | 'batch into n batches' >> beam.BatchElements(min_batch_size=1000, max_batch_size=1001)
                   | 'Predict' >> beam.ParDo(MyPredictDoFn()))
 
-        output | 'WritePredictionResults' >> WriteToText(known_args.output, file_name_suffix=".json")
+        output | 'WritePredictionResults' >> WriteToText(
+            known_args.output, file_name_suffix=".json")
+
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
