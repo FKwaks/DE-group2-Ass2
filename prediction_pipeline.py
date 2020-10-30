@@ -42,7 +42,6 @@ class MyPredictDoFn(beam.DoFn):
 
         df = pd.DataFrame(elements)
         df = df.iloc[1:]
-        print(df)
         new_list = []
         sid_obj = SentimentIntensityAnalyzer()
 
@@ -52,11 +51,11 @@ class MyPredictDoFn(beam.DoFn):
             opinion = sid_obj.polarity_scores(i)
             new_list.append(opinion['compound'])
 
-        df['comments_'] = new_list
-        df = df[df['comments_'] != -55]
-        df = df.groupby('date')['comments_'].mean()
-        df = pd.DataFrame({'date': df.index, 'value': df.values})
-
+        df["comments_"] = new_list
+        df = df[df["comments_"] != -55]
+        df = df.groupby("date")['comments_'].mean()
+        df = pd.DataFrame({"date": df.index, "value": df.values})
+        df.replace({'\'': '"'}, regex=True)
         result = df.to_json(orient="records")
         return result
 
