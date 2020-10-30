@@ -1,0 +1,1 @@
+python3 prediction_pipeline.py --runner DataflowRunner --project deass1 --temp_location gs://de2020ass2grp2/tmp/ --pid deass1 --mbucket de2020ass2grp2 --job_name sentiment --input gs://de2020ass2grp2/Data/reviews-kopie-2.csv --region us-central1 --output gs://de2020ass2grp2/results --setup_file ./setup.py
