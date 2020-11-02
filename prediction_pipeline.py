@@ -86,6 +86,11 @@ def run(argv=None, save_main_session=True):
         '--mbucket',
         dest='mbucket',
         help='model bucket name')
+    
+    parser.add_argument(
+        '--machine_type',
+        dest='machine_type',
+        help='machine type name')
 
     known_args, pipeline_args = parser.parse_known_args(argv)
 
